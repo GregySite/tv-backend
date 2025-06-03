@@ -86,7 +86,6 @@ app.delete('/admin/users/:username', (req, res) => {
   res.json({ success: true });
 });
 
-const path = require("path");
 app.use(express.static(path.join(__dirname, ".")));
 
 const PORT = process.env.PORT || 3000;
