@@ -1,36 +1,47 @@
 const express = require("express");
 const fs = require("fs");
-const path = require("path");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const USERS_FILE = path.join(__dirname, "users.json");
-let users = [];
 
-// Chargement des users au démarrage
-try {
-  const data = fs.readFileSync(USERS_FILE, "utf-8");
-  users = JSON.parse(data);
-  console.log(`Loaded ${users.length} users`);
-} catch (err) {
-  console.error("Erreur en lisant users.json :", err);
+// Fonction pour charger les utilisateurs depuis le fichier
+function loadUsers() {
+  try {
+    const data = fs.readFileSync(USERS_FILE, "utf8");
+    return JSON.parse(data);
+  } catch (err) {
+    console.log("Erreur lecture users.json, fichier vide ou inexistant, création d'une liste vide.");
+    return [];
+  }
 }
 
-app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  console.log('Login attempt:', username);
+// Fonction pour sauver les utilisateurs dans le fichier
+function saveUsersToFile(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+}
 
-  const user = users.find(u => u.username === username);
+// Charge les users en mémoire au démarrage
+let users = loadUsers();
+
+
+// ROUTE LOGIN
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  console.log("Tentative login:", username);
+
+  const user = users.find((u) => u.username === username);
   if (!user) {
     return res.status(401).json({ success: false, message: "Identifiants incorrects" });
   }
 
   if (user.passwordHash === "") {
-    // Compte sans mot de passe (pour test)
+    // Pas de mot de passe, accès direct
     return res.json({ success: true, username });
   }
 
@@ -42,51 +53,64 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Charger les utilisateurs depuis le fichier
-function loadUsers() {
-  const data = fs.readFileSync(USERS_FILE);
-  return JSON.parse(data);
-}
-
-// Sauvegarder les utilisateurs dans le fichier
-function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-// Route pour récupérer tous les utilisateurs
-app.get('/admin/users', (req, res) => {
-  const users = loadUsers();
-  res.json(users);
+// ROUTE LIST USERS (pour admin)
+app.get("/list-users", (req, res) => {
+  // Envoie la liste sans les hash pour la sécurité
+  const safeUsers = users.map((u) => ({ username: u.username }));
+  res.json(safeUsers);
 });
 
-// Ajouter ou modifier un utilisateur
-app.post('/admin/users', async (req, res) => {
+// ROUTE ADD USER
+app.post("/add-user", async (req, res) => {
   const { username, password } = req.body;
-  const users = loadUsers();
-  const existing = users.find(u => u.username === username);
+  if (!username) return res.status(400).json({ success: false, message: "Nom d'utilisateur requis" });
 
-  const passwordHash = password ? await bcrypt.hash(password, 10) : "";
-
-  if (existing) {
-    existing.passwordHash = passwordHash;
-  } else {
-    users.push({ username, passwordHash });
+  if (users.find((u) => u.username === username)) {
+    return res.status(400).json({ success: false, message: "Utilisateur déjà existant" });
   }
 
-  saveUsers(users);
-  res.json({ success: true });
+  let passwordHash = "";
+  if (password && password.length > 0) {
+    passwordHash = await bcrypt.hash(password, 10);
+  }
+
+  users.push({ username, passwordHash });
+  saveUsersToFile(users);
+
+  res.json({ success: true, message: "Utilisateur ajouté" });
 });
 
-// Supprimer un utilisateur
-app.delete('/admin/users/:username', (req, res) => {
-  const { username } = req.params;
-  let users = loadUsers();
-  users = users.filter(u => u.username !== username);
-  saveUsers(users);
-  res.json({ success: true });
+// ROUTE UPDATE USER (changer mot de passe)
+app.post("/update-user", async (req, res) => {
+  const { username, password } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Nom d'utilisateur requis" });
+
+  const user = users.find((u) => u.username === username);
+  if (!user) return res.status(404).json({ success: false, message: "Utilisateur non trouvé" });
+
+  if (password && password.length > 0) {
+    user.passwordHash = await bcrypt.hash(password, 10);
+  } else {
+    user.passwordHash = ""; // mot de passe vide = pas de mot de passe
+  }
+
+  saveUsersToFile(users);
+  res.json({ success: true, message: "Utilisateur mis à jour" });
 });
 
-app.use(express.static(path.join(__dirname, ".")));
+// ROUTE DELETE USER
+app.post("/delete-user", (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Nom d'utilisateur requis" });
+
+  users = users.filter((u) => u.username !== username);
+  saveUsersToFile(users);
+
+  res.json({ success: true, message: "Utilisateur supprimé" });
+});
+
+// Pour servir l'admin.html si tu veux (optionnel)
+app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
