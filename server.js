@@ -5,29 +5,31 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 
 const app = express();
+const USERS_FILE = "./users.json";
+
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public")); // Pour servir admin.html si besoin
 
-const USERS_FILE = "./users.json";
 let users = [];
 
-// Charger les utilisateurs depuis le fichier JSON au démarrage
-if (fs.existsSync(USERS_FILE)) {
-  const content = fs.readFileSync(USERS_FILE, "utf-8");
-  try {
-    users = JSON.parse(content);
-  } catch (e) {
-    console.error("Erreur de parsing de users.json :", e);
+function loadUsers() {
+  if (fs.existsSync(USERS_FILE)) {
+    const data = fs.readFileSync(USERS_FILE, "utf8");
+    users = JSON.parse(data);
+  } else {
     users = [];
   }
 }
 
-// Sauvegarder les utilisateurs dans le fichier JSON
-function saveUsersToFile(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+function saveUsers() {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
-// === LOGIN ===
+// Initialisation
+loadUsers();
+
+// Authentification
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const user = users.find((u) => u.username === username);
@@ -48,50 +50,41 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// === AJOUT UTILISATEUR ===
-app.post("/add-user", async (req, res) => {
+// Liste des utilisateurs (admin)
+app.get("/list-users", (req, res) => {
+  const safeUsers = users.map((u) => ({ username: u.username }));
+  res.json(safeUsers);
+});
+
+// Ajouter ou modifier un utilisateur
+app.post("/save-user", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username) {
     return res.status(400).json({ success: false, message: "Nom d'utilisateur requis" });
   }
 
-  if (users.find((u) => u.username === username)) {
-    return res.status(400).json({ success: false, message: "Utilisateur déjà existant" });
+  let user = users.find((u) => u.username === username);
+  if (!user) {
+    user = { username, passwordHash: "" };
+    users.push(user);
   }
 
-  let passwordHash = "";
   if (password) {
-    passwordHash = await bcrypt.hash(password, 10);
+    user.passwordHash = await bcrypt.hash(password, 10);
   }
 
-  users.push({ username, passwordHash });
-  saveUsersToFile(users);
+  saveUsers();
   res.json({ success: true });
 });
 
-// === SUPPRESSION UTILISATEUR ===
+// Supprimer un utilisateur
 app.post("/delete-user", (req, res) => {
   const { username } = req.body;
-  const countBefore = users.length;
   users = users.filter((u) => u.username !== username);
-
-  if (users.length < countBefore) {
-    saveUsersToFile(users);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ success: false, message: "Utilisateur introuvable" });
-  }
+  saveUsers();
+  res.json({ success: true });
 });
-
-// === LISTER LES UTILISATEURS ===
-app.get("/list-users", (req, res) => {
-  const safeUsers = users.map((u) => ({ username: u.username }));
-  res.json(safeUsers);
-});
-
-// === SERVIR admin.html ===
-app.use(express.static(path.join(__dirname, "../tele"))); // si admin.html est dans ../tele
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
