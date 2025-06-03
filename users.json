@@ -9,6 +9,6 @@
   }
   {
     "username": "admin",
-    "passwordHash": "$2b$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "passwordHash": ""
   }
 ]
