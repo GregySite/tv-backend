@@ -1,13 +1,5 @@
 [
   {
-    "username": "alice",
-    "passwordHash": "$2b$10$M2iRPm08UqMRBXx9Idpd6OLM1UYsN6/6Rvh9LaCTiCwK.QPyF3PA6"
-  },
-  {
-    "username": "bob",
-    "passwordHash": "$2b$10$eTAA4aZcxMyV6zBC9UkkhO57u0RO3Lsxy1qKZCma0FcrfyB1lm9MG"
-  },
-  {
     "username": "admin",
     "passwordHash": ""
   }
