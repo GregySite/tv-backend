@@ -22,3 +22,9 @@ app.post("/login", async (req, res) => {
 app.listen(3000, () => {
   console.log("Server listening on port 3000");
 });
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  console.log('Login attempt:', username, password);
+  // Reste de ton code...
+});
