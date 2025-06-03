@@ -42,6 +42,53 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Charger les utilisateurs depuis le fichier
+function loadUsers() {
+  const data = fs.readFileSync(USERS_FILE);
+  return JSON.parse(data);
+}
+
+// Sauvegarder les utilisateurs dans le fichier
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+// Route pour récupérer tous les utilisateurs
+app.get('/admin/users', (req, res) => {
+  const users = loadUsers();
+  res.json(users);
+});
+
+// Ajouter ou modifier un utilisateur
+app.post('/admin/users', async (req, res) => {
+  const { username, password } = req.body;
+  const users = loadUsers();
+  const existing = users.find(u => u.username === username);
+
+  const passwordHash = password ? await bcrypt.hash(password, 10) : "";
+
+  if (existing) {
+    existing.passwordHash = passwordHash;
+  } else {
+    users.push({ username, passwordHash });
+  }
+
+  saveUsers(users);
+  res.json({ success: true });
+});
+
+// Supprimer un utilisateur
+app.delete('/admin/users/:username', (req, res) => {
+  const { username } = req.params;
+  let users = loadUsers();
+  users = users.filter(u => u.username !== username);
+  saveUsers(users);
+  res.json({ success: true });
+});
+
+const path = require("path");
+app.use(express.static(path.join(__dirname, ".")));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
