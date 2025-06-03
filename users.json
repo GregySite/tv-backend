@@ -7,4 +7,8 @@
     "username": "bob",
     "passwordHash": "$2b$10$eTAA4aZcxMyV6zBC9UkkhO57u0RO3Lsxy1qKZCma0FcrfyB1lm9MG"
   }
+  {
+    "username": "admin",
+    "passwordHash": "$2b$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
 ]
