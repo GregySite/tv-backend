@@ -9,14 +9,26 @@ app.use(express.json());
 
 const USERS_FILE = "./users.json";
 
-app.post("/login", async (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  const users = JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
   const user = users.find(u => u.username === username);
-  if (!user) return res.json({ success: false });
 
+  if (!user) {
+    return res.status(401).json({ success: false, message: "Identifiants incorrects" });
+  }
+
+  // Si passwordHash vide, on autorise directement
+  if (user.passwordHash === "") {
+    return res.json({ success: true, username });
+  }
+
+  // Sinon on compare avec bcrypt
   const match = await bcrypt.compare(password, user.passwordHash);
-  res.json({ success: match });
+  if (match) {
+    return res.json({ success: true, username });
+  } else {
+    return res.status(401).json({ success: false, message: "Identifiants incorrects" });
+  }
 });
 
 app.listen(3000, () => {
