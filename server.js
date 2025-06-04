@@ -4,15 +4,16 @@ const path = require("path");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 
-const app = express();
 const USERS_FILE = "./users.json";
+const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("public")); // Pour servir admin.html si besoin
+app.use(express.static("public")); // pour servir admin.html si nécessaire
 
 let users = [];
 
+// Charger les utilisateurs depuis le fichier
 function loadUsers() {
   if (fs.existsSync(USERS_FILE)) {
     const data = fs.readFileSync(USERS_FILE, "utf8");
@@ -22,6 +23,7 @@ function loadUsers() {
   }
 }
 
+// Sauvegarder les utilisateurs dans le fichier
 function saveUsers() {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
